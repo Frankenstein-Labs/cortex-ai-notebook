@@ -33,6 +33,52 @@ const navItems = [
 export const CortexLab = ({ workspaceId }: { workspaceId: string }) => {
   const [activeActivity, setActiveActivity] = useState("File Browser");
   const [activeTab, setActiveTab] = useState("Welcome");
+  const [runtimeId, setRuntimeId] = useState<string | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState("STOPPED");
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const connectRuntime = async () => {
+    setIsConnecting(true);
+    setRuntimeError(null);
+    try {
+      const projectResponse = await fetch(`/api/cortex/${workspaceId}/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "My first Cortex project", slug: "default-project" }),
+      });
+      if (!projectResponse.ok) throw new Error("Unable to create or load the Cortex project");
+      const { project } = (await projectResponse.json()) as { project: { id: string } };
+      const runtimeResponse = await fetch(`/api/cortex/${workspaceId}/runtimes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (!runtimeResponse.ok)
+        throw new Error((await runtimeResponse.json()).error ?? "Unable to start JupyterHub");
+      const { runtime } = (await runtimeResponse.json()) as { runtime: { id: string; status: string } };
+      setRuntimeId(runtime.id);
+      setRuntimeStatus(runtime.status);
+      setActiveTab("JupyterLab");
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const statusResponse = await fetch(
+          `/api/cortex/${workspaceId}/runtimes/${encodeURIComponent(runtime.id)}`
+        );
+        if (!statusResponse.ok) throw new Error("Unable to read JupyterHub runtime status");
+        const { runtime: status } = (await statusResponse.json()) as { runtime: { status: string } };
+        setRuntimeStatus(status.status);
+        if (status.status === "READY") break;
+        if (status.status === "ERROR" || status.status === "STOPPED")
+          throw new Error(`JupyterHub runtime entered ${status.status}`);
+      }
+    } catch (error) {
+      setRuntimeError(error instanceof Error ? error.message : "Runtime connection failed");
+      setRuntimeStatus("ERROR");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
   return (
     <main className="flex min-h-[calc(100vh-4rem)] flex-col bg-[#0b0f14] text-slate-200">
       <header className="flex h-10 items-center border-b border-white/10 bg-[#111820] px-3 text-xs">
@@ -63,7 +109,10 @@ export const CortexLab = ({ workspaceId }: { workspaceId: string }) => {
         <span className="mx-2 text-slate-600">/</span>
         <span>Welcome</span>
         <span className="ml-auto flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-amber-400" /> JupyterHub runtime unavailable
+          <span
+            className={`h-2 w-2 rounded-full ${runtimeStatus === "READY" ? "bg-emerald-400" : runtimeStatus === "ERROR" ? "bg-red-400" : "bg-amber-400"}`}
+          />{" "}
+          JupyterHub: {runtimeStatus.toLowerCase()}
         </span>
       </div>
       <div className="flex min-h-0 flex-1">
@@ -144,19 +193,36 @@ export const CortexLab = ({ workspaceId }: { workspaceId: string }) => {
                   const Component = Icon as typeof FileCode2;
                   return (
                     <button
+                      onClick={title === "Connect runtime" ? connectRuntime : undefined}
+                      disabled={title === "Connect runtime" && isConnecting}
                       key={title as string}
                       className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-left hover:border-cyan-400/40 hover:bg-cyan-400/5">
                       <Component className={`mb-8 h-5 w-5 ${color}`} />
                       <div className="text-sm font-medium text-white">{title as string}</div>
-                      <div className="mt-1 text-xs text-slate-500">{description as string}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {title === "Connect runtime" && isConnecting
+                          ? "Waiting for JupyterHub..."
+                          : (description as string)}
+                      </div>
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-8 rounded-lg border border-amber-400/20 bg-amber-400/5 p-4 text-xs text-amber-200">
-                <strong>JupyterHub not connected:</strong> the file browser, kernel list, terminals and
-                notebook execution remain unavailable until a verified adapter health check succeeds.
-              </div>
+              {runtimeStatus === "READY" && runtimeId ? (
+                <div className="mt-8 h-[520px] overflow-hidden rounded-lg border border-emerald-400/30 bg-black">
+                  <iframe
+                    title="JupyterLab"
+                    src={`/api/cortex/${workspaceId}/runtimes/${encodeURIComponent(runtimeId)}/proxy/`}
+                    className="h-full w-full border-0"
+                  />
+                </div>
+              ) : (
+                <div className="mt-8 rounded-lg border border-amber-400/20 bg-amber-400/5 p-4 text-xs text-amber-200">
+                  <strong>{runtimeError ? "Runtime error:" : "JupyterHub not connected:"}</strong>{" "}
+                  {runtimeError ??
+                    "Click Connect runtime to start an isolated JupyterHub server. The notebook UI will appear only after the server reports READY."}
+                </div>
+              )}
             </div>
           </div>
           <footer className="flex h-8 items-center justify-between border-t border-white/10 bg-[#111820] px-3 text-[11px] text-slate-500">
