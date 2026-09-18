@@ -667,6 +667,8 @@ model Workspace {
   cortexProjects         CortexProject[]
   cortexTokens           CortexToken[]
   cortexPermissionGrants CortexPermissionGrant[]
+  cortexModels           CortexModel[]
+  cortexDatasets         CortexDataset[]
 
   @@unique([organizationId, name])
 }
@@ -811,6 +813,84 @@ model CortexPermissionGrant {
   @@unique([workspaceId, projectId, userId])
   @@index([userId, workspaceId])
   @@map("cortex_permission_grants")
+}
+
+enum CortexArtifactStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model CortexModel {
+  id          String               @id @default(cuid())
+  createdAt   DateTime             @default(now()) @map(name: "created_at")
+  updatedAt   DateTime             @updatedAt @map(name: "updated_at")
+  name        String
+  slug        String
+  description String?
+  provider    String
+  externalId  String?              @map(name: "external_id")
+  status      CortexArtifactStatus @default(ACTIVE)
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String               @map(name: "workspace_id")
+  creator     User                 @relation("cortexModelCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy   String               @map(name: "created_by")
+  versions    CortexModelVersion[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@map("cortex_models")
+}
+
+model CortexModelVersion {
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now()) @map(name: "created_at")
+  model       CortexModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId     String      @map(name: "model_id")
+  version     String
+  artifactUri String      @map(name: "artifact_uri")
+  checksum    String?
+  metadata    Json        @default("{}")
+
+  @@unique([modelId, version])
+  @@index([modelId, createdAt])
+  @@map("cortex_model_versions")
+}
+
+model CortexDataset {
+  id          String                  @id @default(cuid())
+  createdAt   DateTime                @default(now()) @map(name: "created_at")
+  updatedAt   DateTime                @updatedAt @map(name: "updated_at")
+  name        String
+  slug        String
+  description String?
+  provider    String
+  externalId  String?                 @map(name: "external_id")
+  status      CortexArtifactStatus    @default(ACTIVE)
+  workspace   Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String                  @map(name: "workspace_id")
+  creator     User                    @relation("cortexDatasetCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy   String                  @map(name: "created_by")
+  revisions   CortexDatasetRevision[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@map("cortex_datasets")
+}
+
+model CortexDatasetRevision {
+  id          String        @id @default(cuid())
+  createdAt   DateTime      @default(now()) @map(name: "created_at")
+  dataset     CortexDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  datasetId   String        @map(name: "dataset_id")
+  revision    String
+  artifactUri String        @map(name: "artifact_uri")
+  checksum    String?
+  rowCount    BigInt?       @map(name: "row_count")
+  metadata    Json          @default("{}")
+
+  @@unique([datasetId, revision])
+  @@index([datasetId, createdAt])
+  @@map("cortex_dataset_revisions")
 }
 
 /// Represents the top-level organizational hierarchy in Formbricks.
@@ -1375,6 +1455,8 @@ model User {
   cortexProjects            CortexProject[]
   cortexTokens              CortexToken[]           @relation("cortexTokenCreatedBy")
   cortexPermissionGrants    CortexPermissionGrant[] @relation("cortexGrantUser")
+  cortexModels              CortexModel[]           @relation("cortexModelCreatedBy")
+  cortexDatasets            CortexDataset[]         @relation("cortexDatasetCreatedBy")
   lastLoginAt               DateTime?
   isActive                  Boolean                 @default(true)
 }
