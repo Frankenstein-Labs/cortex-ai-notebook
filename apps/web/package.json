@@ -37,6 +37,7 @@
     "@dnd-kit/utilities": "3.2.2",
     "@formbricks/ai": "workspace:*",
     "@formbricks/cache": "workspace:*",
+    "@formbricks/cortex-runtime": "workspace:*",
     "@formbricks/database": "workspace:*",
     "@formbricks/email": "workspace:*",
     "@formbricks/hub": "0.12.0",

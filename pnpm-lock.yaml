@@ -385,6 +385,9 @@ importers:
       '@formbricks/cache':
         specifier: workspace:*
         version: link:../../packages/cache
+      '@formbricks/cortex-runtime':
+        specifier: workspace:*
+        version: link:../../packages/cortex-runtime
       '@formbricks/database':
         specifier: workspace:*
         version: link:../../packages/database
