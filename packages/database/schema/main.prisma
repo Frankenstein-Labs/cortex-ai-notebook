@@ -669,6 +669,8 @@ model Workspace {
   cortexPermissionGrants CortexPermissionGrant[]
   cortexModels           CortexModel[]
   cortexDatasets         CortexDataset[]
+  cortexExperiments      CortexExperiment[]
+  cortexDeployments      CortexDeployment[]
 
   @@unique([organizationId, name])
 }
@@ -891,6 +893,94 @@ model CortexDatasetRevision {
   @@unique([datasetId, revision])
   @@index([datasetId, createdAt])
   @@map("cortex_dataset_revisions")
+}
+
+enum CortexExperimentStatus {
+  DRAFT
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum CortexDeploymentStatus {
+  PENDING
+  PROVISIONING
+  READY
+  FAILED
+  STOPPED
+}
+
+model CortexExperiment {
+  id                String                 @id @default(cuid())
+  createdAt         DateTime               @default(now()) @map(name: "created_at")
+  updatedAt         DateTime               @updatedAt @map(name: "updated_at")
+  name              String
+  slug              String
+  status            CortexExperimentStatus @default(DRAFT)
+  config            Json                   @default("{}")
+  modelVersionId    String?                @map(name: "model_version_id")
+  datasetRevisionId String?                @map(name: "dataset_revision_id")
+  workspace         Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId       String                 @map(name: "workspace_id")
+  creator           User                   @relation("cortexExperimentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy         String                 @map(name: "created_by")
+  runs              CortexExperimentRun[]
+  evaluations       CortexEvaluation[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@map("cortex_experiments")
+}
+
+model CortexExperimentRun {
+  id           String                 @id @default(cuid())
+  createdAt    DateTime               @default(now()) @map(name: "created_at")
+  startedAt    DateTime?              @map(name: "started_at")
+  finishedAt   DateTime?              @map(name: "finished_at")
+  status       CortexExperimentStatus @default(DRAFT)
+  parameters   Json                   @default("{}")
+  metrics      Json                   @default("{}")
+  artifactUri  String?                @map(name: "artifact_uri")
+  experiment   CortexExperiment       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId String                 @map(name: "experiment_id")
+
+  @@index([experimentId, createdAt])
+  @@map("cortex_experiment_runs")
+}
+
+model CortexEvaluation {
+  id           String                 @id @default(cuid())
+  createdAt    DateTime               @default(now()) @map(name: "created_at")
+  evaluator    String
+  status       CortexExperimentStatus @default(DRAFT)
+  metrics      Json                   @default("{}")
+  reportUri    String?                @map(name: "report_uri")
+  experiment   CortexExperiment       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId String                 @map(name: "experiment_id")
+
+  @@index([experimentId, createdAt])
+  @@map("cortex_evaluations")
+}
+
+model CortexDeployment {
+  id             String                 @id @default(cuid())
+  createdAt      DateTime               @default(now()) @map(name: "created_at")
+  updatedAt      DateTime               @updatedAt @map(name: "updated_at")
+  name           String
+  target         String
+  modelVersionId String                 @map(name: "model_version_id")
+  status         CortexDeploymentStatus @default(PENDING)
+  endpoint       String?
+  config         Json                   @default("{}")
+  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId    String                 @map(name: "workspace_id")
+  creator        User                   @relation("cortexDeploymentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy      String                 @map(name: "created_by")
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, status])
+  @@map("cortex_deployments")
 }
 
 /// Represents the top-level organizational hierarchy in Formbricks.
@@ -1457,6 +1547,8 @@ model User {
   cortexPermissionGrants    CortexPermissionGrant[] @relation("cortexGrantUser")
   cortexModels              CortexModel[]           @relation("cortexModelCreatedBy")
   cortexDatasets            CortexDataset[]         @relation("cortexDatasetCreatedBy")
+  cortexExperiments         CortexExperiment[]      @relation("cortexExperimentCreatedBy")
+  cortexDeployments         CortexDeployment[]      @relation("cortexDeploymentCreatedBy")
   lastLoginAt               DateTime?
   isActive                  Boolean                 @default(true)
 }
