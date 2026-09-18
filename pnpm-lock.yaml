@@ -388,6 +388,9 @@ importers:
       '@formbricks/cortex-runtime':
         specifier: workspace:*
         version: link:../../packages/cortex-runtime
+      '@formbricks/cortex-service':
+        specifier: workspace:*
+        version: link:../../packages/cortex-service
       '@formbricks/database':
         specifier: workspace:*
         version: link:../../packages/database

@@ -652,19 +652,21 @@ model Workspace {
   charts                      Chart[]
   dashboards                  Dashboard[]
 
-  surveys              Survey[]
-  contacts             Contact[]
-  actionClasses        ActionClass[]
-  contactAttributeKeys ContactAttributeKey[]
-  webhooks             Webhook[]
-  tags                 Tag[]
-  segments             Segment[]
-  integrations         Integration[]
-  apiKeyWorkspaces     ApiKeyWorkspace[]
-  feedbackSources      FeedbackSource[]
-  workflows            Workflow[]
-  workflowRuns         WorkflowRun[]
-  cortexProjects       CortexProject[]
+  surveys                Survey[]
+  contacts               Contact[]
+  actionClasses          ActionClass[]
+  contactAttributeKeys   ContactAttributeKey[]
+  webhooks               Webhook[]
+  tags                   Tag[]
+  segments               Segment[]
+  integrations           Integration[]
+  apiKeyWorkspaces       ApiKeyWorkspace[]
+  feedbackSources        FeedbackSource[]
+  workflows              Workflow[]
+  workflowRuns           WorkflowRun[]
+  cortexProjects         CortexProject[]
+  cortexTokens           CortexToken[]
+  cortexPermissionGrants CortexPermissionGrant[]
 
   @@unique([organizationId, name])
 }
@@ -695,20 +697,22 @@ enum CortexRuntimeStatus {
 }
 
 model CortexProject {
-  id          String              @id @default(cuid())
-  createdAt   DateTime            @default(now()) @map(name: "created_at")
-  updatedAt   DateTime            @updatedAt @map(name: "updated_at")
-  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId String              @map(name: "workspace_id")
-  creator     User                @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  createdBy   String              @map(name: "created_by")
-  name        String
-  slug        String
-  description String?
-  status      CortexProjectStatus @default(ACTIVE)
-  notebooks   CortexNotebook[]
-  files       CortexFile[]
-  runtimes    CortexRuntime[]
+  id               String                  @id @default(cuid())
+  createdAt        DateTime                @default(now()) @map(name: "created_at")
+  updatedAt        DateTime                @updatedAt @map(name: "updated_at")
+  workspace        Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId      String                  @map(name: "workspace_id")
+  creator          User                    @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy        String                  @map(name: "created_by")
+  name             String
+  slug             String
+  description      String?
+  status           CortexProjectStatus     @default(ACTIVE)
+  notebooks        CortexNotebook[]
+  files            CortexFile[]
+  runtimes         CortexRuntime[]
+  tokens           CortexToken[]
+  permissionGrants CortexPermissionGrant[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -760,6 +764,53 @@ model CortexRuntime {
 
   @@index([projectId, status])
   @@map("cortex_runtimes")
+}
+
+enum CortexPermissionRole {
+  VIEWER
+  EDITOR
+  RUNNER
+  ADMIN
+}
+
+model CortexToken {
+  id          String         @id @default(cuid())
+  createdAt   DateTime       @default(now()) @map(name: "created_at")
+  updatedAt   DateTime       @updatedAt @map(name: "updated_at")
+  name        String
+  prefix      String
+  tokenHash   String         @unique @map(name: "token_hash")
+  scopes      Json           @default("[]")
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String         @map(name: "workspace_id")
+  project     CortexProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String?        @map(name: "project_id")
+  creator     User           @relation("cortexTokenCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy   String         @map(name: "created_by")
+  lastUsedAt  DateTime?      @map(name: "last_used_at")
+  expiresAt   DateTime?      @map(name: "expires_at")
+  revokedAt   DateTime?      @map(name: "revoked_at")
+
+  @@index([workspaceId, revokedAt])
+  @@index([projectId, revokedAt])
+  @@map("cortex_tokens")
+}
+
+model CortexPermissionGrant {
+  id          String               @id @default(cuid())
+  createdAt   DateTime             @default(now()) @map(name: "created_at")
+  updatedAt   DateTime             @updatedAt @map(name: "updated_at")
+  role        CortexPermissionRole
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String               @map(name: "workspace_id")
+  project     CortexProject?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String?              @map(name: "project_id")
+  user        User                 @relation("cortexGrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String               @map(name: "user_id")
+
+  @@unique([workspaceId, projectId, userId])
+  @@index([userId, workspaceId])
+  @@map("cortex_permission_grants")
 }
 
 /// Represents the top-level organizational hierarchy in Formbricks.
@@ -1293,37 +1344,39 @@ model User {
   legacyEmailVerifiedAt DateTime? @map(name: "email_verified_at") @ignore
 
   twoFactorSecret           String?
-  twoFactorEnabled          Boolean             @default(false)
+  twoFactorEnabled          Boolean                 @default(false)
   backupCodes               String?
   password                  String?
-  identityProvider          IdentityProvider    @default(email)
+  identityProvider          IdentityProvider        @default(email)
   identityProviderAccountId String?
   memberships               Membership[]
   accounts                  Account[]
   sessions                  Session[]
   twoFactor                 TwoFactor?
-  oauthClients              oauthClient[]       @relation("OAuthClientUser")
-  oauthAccessTokens         oauthAccessToken[]  @relation("OAuthAccessTokenUser")
-  oauthRefreshTokens        oauthRefreshToken[] @relation("OAuthRefreshTokenUser")
-  oauthConsents             oauthConsent[]      @relation("OAuthConsentUser")
+  oauthClients              oauthClient[]           @relation("OAuthClientUser")
+  oauthAccessTokens         oauthAccessToken[]      @relation("OAuthAccessTokenUser")
+  oauthRefreshTokens        oauthRefreshToken[]     @relation("OAuthRefreshTokenUser")
+  oauthConsents             oauthConsent[]          @relation("OAuthConsentUser")
   passwordResetToken        PasswordResetToken?
   groupId                   String?
-  invitesCreated            Invite[]            @relation("inviteCreatedBy")
-  invitesAccepted           Invite[]            @relation("inviteAcceptedBy")
+  invitesCreated            Invite[]                @relation("inviteCreatedBy")
+  invitesAccepted           Invite[]                @relation("inviteAcceptedBy")
   /// [UserNotificationSettings]
-  notificationSettings      Json                @default("{}")
+  notificationSettings      Json                    @default("{}")
   /// [Locale]
-  locale                    String              @default("en-US")
+  locale                    String                  @default("en-US")
   surveys                   Survey[]
-  charts                    Chart[]             @relation("chartCreatedBy")
-  dashboards                Dashboard[]         @relation("dashboardCreatedBy")
+  charts                    Chart[]                 @relation("chartCreatedBy")
+  dashboards                Dashboard[]             @relation("dashboardCreatedBy")
   feedbackSources           FeedbackSource[]
   teamUsers                 TeamUser[]
-  workflows                 Workflow[]          @relation("workflowCreatedBy")
-  workflowVersionsPublished WorkflowVersion[]   @relation("workflowVersionPublishedBy")
+  workflows                 Workflow[]              @relation("workflowCreatedBy")
+  workflowVersionsPublished WorkflowVersion[]       @relation("workflowVersionPublishedBy")
   cortexProjects            CortexProject[]
+  cortexTokens              CortexToken[]           @relation("cortexTokenCreatedBy")
+  cortexPermissionGrants    CortexPermissionGrant[] @relation("cortexGrantUser")
   lastLoginAt               DateTime?
-  isActive                  Boolean             @default(true)
+  isActive                  Boolean                 @default(true)
 }
 
 /// Defines a segment of contacts based on attributes.

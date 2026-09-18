@@ -38,6 +38,7 @@
     "@formbricks/ai": "workspace:*",
     "@formbricks/cache": "workspace:*",
     "@formbricks/cortex-runtime": "workspace:*",
+    "@formbricks/cortex-service": "workspace:*",
     "@formbricks/database": "workspace:*",
     "@formbricks/email": "workspace:*",
     "@formbricks/hub": "0.12.0",
