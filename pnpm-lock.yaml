@@ -1064,6 +1064,31 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/cortex-gateway:
+    dependencies:
+      '@formbricks/cortex-runtime':
+        specifier: workspace:*
+        version: link:../cortex-runtime
+      ws:
+        specifier: 8.21.0
+        version: 8.21.0
+    devDependencies:
+      '@formbricks/config-typescript':
+        specifier: workspace:*
+        version: link:../config-typescript
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.4.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   packages/cortex-git:
     dependencies:
       zod:

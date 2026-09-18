@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { JupyterHubHttpAdapter } from "@formbricks/cortex-runtime/jupyterhub-adapter";
+import { signCortexProxyTicket } from "@formbricks/cortex-runtime/proxy-ticket";
 import { prisma } from "@formbricks/database";
 import { env } from "@/lib/env";
 import { getWorkspaceAuth } from "@/modules/workspaces/lib/utils";
@@ -43,6 +44,13 @@ const proxy = async (
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.delete("set-cookie");
   responseHeaders.set("cache-control", "no-store");
+  responseHeaders.append(
+    "set-cookie",
+    `cortex_proxy_ticket=${signCortexProxyTicket(
+      { workspaceId, runtimeId, userId: auth.session.user.id, expiresAt: Date.now() + 5 * 60 * 1000 },
+      env.CORTEX_PROXY_TICKET_SECRET
+    )}; HttpOnly; Secure; SameSite=Lax; Path=/api/cortex/${encodeURIComponent(workspaceId)}/runtimes/${encodeURIComponent(runtimeId)}/proxy`
+  );
   return new NextResponse(upstream.body, { status: upstream.status, headers: responseHeaders });
 };
 
