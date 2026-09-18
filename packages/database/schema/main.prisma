@@ -664,8 +664,102 @@ model Workspace {
   feedbackSources      FeedbackSource[]
   workflows            Workflow[]
   workflowRuns         WorkflowRun[]
+  cortexProjects       CortexProject[]
 
   @@unique([organizationId, name])
+}
+
+enum CortexProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum CortexNotebookStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CortexRuntimeKind {
+  LOCAL
+  CONTAINER
+  CLOUD
+}
+
+enum CortexRuntimeStatus {
+  PROVISIONING
+  READY
+  BUSY
+  STOPPED
+  ERROR
+}
+
+model CortexProject {
+  id          String              @id @default(cuid())
+  createdAt   DateTime            @default(now()) @map(name: "created_at")
+  updatedAt   DateTime            @updatedAt @map(name: "updated_at")
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String              @map(name: "workspace_id")
+  creator     User                @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy   String              @map(name: "created_by")
+  name        String
+  slug        String
+  description String?
+  status      CortexProjectStatus @default(ACTIVE)
+  notebooks   CortexNotebook[]
+  files       CortexFile[]
+  runtimes    CortexRuntime[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  @@map("cortex_projects")
+}
+
+model CortexNotebook {
+  id        String               @id @default(cuid())
+  createdAt DateTime             @default(now()) @map(name: "created_at")
+  updatedAt DateTime             @updatedAt @map(name: "updated_at")
+  project   CortexProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String               @map(name: "project_id")
+  name      String
+  path      String
+  status    CortexNotebookStatus @default(DRAFT)
+
+  @@unique([projectId, path])
+  @@map("cortex_notebooks")
+}
+
+model CortexFile {
+  id         String        @id @default(cuid())
+  createdAt  DateTime      @default(now()) @map(name: "created_at")
+  updatedAt  DateTime      @updatedAt @map(name: "updated_at")
+  project    CortexProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String        @map(name: "project_id")
+  path       String
+  mimeType   String?       @map(name: "mime_type")
+  sizeBytes  BigInt?       @map(name: "size_bytes")
+  checksum   String?
+  storageKey String        @map(name: "storage_key")
+
+  @@unique([projectId, path])
+  @@map("cortex_files")
+}
+
+model CortexRuntime {
+  id        String              @id @default(cuid())
+  createdAt DateTime            @default(now()) @map(name: "created_at")
+  updatedAt DateTime            @updatedAt @map(name: "updated_at")
+  project   CortexProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String              @map(name: "project_id")
+  provider  String
+  kind      CortexRuntimeKind
+  status    CortexRuntimeStatus @default(STOPPED)
+  cpu       Int?
+  memoryMb  Int?                @map(name: "memory_mb")
+  gpu       Int?
+
+  @@index([projectId, status])
+  @@map("cortex_runtimes")
 }
 
 /// Represents the top-level organizational hierarchy in Formbricks.
@@ -1227,6 +1321,7 @@ model User {
   teamUsers                 TeamUser[]
   workflows                 Workflow[]          @relation("workflowCreatedBy")
   workflowVersionsPublished WorkflowVersion[]   @relation("workflowVersionPublishedBy")
+  cortexProjects            CortexProject[]
   lastLoginAt               DateTime?
   isActive                  Boolean             @default(true)
 }
