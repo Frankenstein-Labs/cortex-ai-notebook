@@ -13,3 +13,10 @@ Cortex is designed to integrate JupyterHub for multi-user runtime spawning, prox
 
 Source: https://github.com/jupyterhub/jupyterhub  
 License: https://github.com/jupyterhub/jupyterhub/blob/main/LICENSE
+
+## Jupyter Docker Stacks
+
+Cortex uses a configurable official Jupyter Docker Stacks single-user image to serve the real JupyterLab interface inside each isolated runtime. The image and included components carry their own notices and licenses, which must be retained according to the selected image tag.
+
+Source: https://github.com/jupyter/docker-stacks
+Documentation: https://jupyter-docker-stacks.readthedocs.io/

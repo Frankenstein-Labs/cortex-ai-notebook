@@ -376,6 +376,7 @@ const parsedEnv = createEnv({
     HTTPS_PROXY: z.url().optional(),
     HUB_API_URL: z.url(),
     HUB_API_KEY: z.string().trim().min(1),
+    CORTEX_JUPYTERHUB_API_TOKEN: z.string().trim().min(1).optional(),
     IMPRINT_URL: z
       .url()
       .optional()
@@ -579,6 +580,7 @@ const parsedEnv = createEnv({
     HTTPS_PROXY: process.env.HTTPS_PROXY,
     HUB_API_URL: process.env.HUB_API_URL,
     HUB_API_KEY: process.env.HUB_API_KEY,
+    CORTEX_JUPYTERHUB_API_TOKEN: process.env.CORTEX_JUPYTERHUB_API_TOKEN,
     IMPRINT_URL: process.env.IMPRINT_URL,
     IMPRINT_ADDRESS: process.env.IMPRINT_ADDRESS,
     INVITE_DISABLED: process.env.INVITE_DISABLED,

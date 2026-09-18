@@ -33,6 +33,7 @@ const proxy = async (
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("authorization");
+  headers.set("authorization", `token ${env.HUB_API_KEY}`);
   const upstream = await fetch(target, {
     method: request.method,
     headers,

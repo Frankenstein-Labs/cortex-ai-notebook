@@ -1,0 +1,28 @@
+services:
+  jupyterhub:
+    build:
+      context: ./docker/jupyterhub
+    image: ${CORTEX_JUPYTERHUB_IMAGE:-cortex-jupyterhub:5.4.5}
+    restart: unless-stopped
+    ports:
+      - "${JUPYTERHUB_PORT:-8000}:8000"
+    environment:
+      CORTEX_JUPYTERHUB_API_TOKEN: ${CORTEX_JUPYTERHUB_API_TOKEN:?CORTEX_JUPYTERHUB_API_TOKEN is required}
+      JUPYTERHUB_NETWORK: cortex-jupyter
+      JUPYTERHUB_SINGLEUSER_IMAGE: ${JUPYTERHUB_SINGLEUSER_IMAGE:-quay.io/jupyter/base-notebook:2025-09-08}
+      JUPYTERHUB_DEFAULT_CPU_LIMIT: ${JUPYTERHUB_DEFAULT_CPU_LIMIT:-1}
+      JUPYTERHUB_DEFAULT_MEMORY_LIMIT: ${JUPYTERHUB_DEFAULT_MEMORY_LIMIT:-2G}
+      JUPYTERHUB_ALLOW_ALL: ${JUPYTERHUB_ALLOW_ALL:-false}
+      JUPYTERHUB_AUTHENTICATOR_CLASS: ${JUPYTERHUB_AUTHENTICATOR_CLASS:-dummy}
+    volumes:
+      - jupyterhub-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cortex-jupyter
+
+networks:
+  cortex-jupyter:
+    name: cortex-jupyter
+
+volumes:
+  jupyterhub-data:
